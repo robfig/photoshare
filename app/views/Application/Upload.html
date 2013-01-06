@@ -1,0 +1,26 @@
+{{template "header.html" .}}
+
+<h2>Upload your photos</h2>
+
+{{template "messages.html" .}}
+
+<form action="/Application/PostUpload" method="POST" enctype="multipart/form-data">
+	<fieldset>
+		<div class="field">
+			<label for="name">Name:</label>
+			<input id="name" name="name" value="{{.flash.name}}" class="{{errorClass "name" .}}"/>
+			<span class="error">{{.errors.name}}</span>
+		</div>
+
+		<div class="field">
+			<label for="photos">Photos:</label>
+			<input id="photos" name="photos[]" type="file" multiple accept="image/*"/>
+			<span class="error">{{.errors.photos}}</span>
+		</div>
+
+		<input type="submit">
+	</fieldset>
+</form>
+
+{{template "footer.html" .}}
+

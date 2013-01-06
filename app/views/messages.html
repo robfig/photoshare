@@ -1,0 +1,18 @@
+{{if .errors}}
+<div class="error">
+	{{if .flash.error}}
+		{{.flash.error}}
+	{{end}}
+	<ul>
+		{{range .errors}}
+			<li>{{.}}</li>
+		{{end}}
+	</ul>
+</div>
+{{end}}
+
+{{if .flash.success}}
+<div class="success">
+	{{.flash.success}}
+</div>
+{{end}}
