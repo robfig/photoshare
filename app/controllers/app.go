@@ -1,6 +1,8 @@
 package controllers
 
 import (
+	"archive/zip"
+	"bytes"
 	"code.google.com/p/graphics-go/graphics"
 	"fmt"
 	"github.com/robfig/revel"
@@ -9,6 +11,7 @@ import (
 	"image/jpeg"
 	_ "image/png"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"time"
@@ -61,10 +64,10 @@ func (c Application) Upload() rev.Result {
 }
 
 // TODO: Should be able to accept photos []*multipart.FileHeader
-// TODO: Create thumbnails.  Use a native go library or imagemagick/graphicsmagick
-// TODO: Support RAW (canon) and NEG (nikon)
+// TODO: Support RAW/CR2 (canon) and CNEG (nikon)
 // TODO: Handle EXIF rotation
 // TODO: Read EXIF data and allow reset by time zone?
+// TODO: Disposition/attachment?
 func (c Application) PostUpload(name string) rev.Result {
 	c.Validation.Required(name)
 
@@ -99,10 +102,17 @@ func (c Application) PostUpload(name string) rev.Result {
 			return c.Redirect(Application.Upload)
 		}
 
+		photoBytes, err := ioutil.ReadAll(input)
+		if err != nil || len(photoBytes) == 0 {
+			rev.ERROR.Println("Failed to read image:", err)
+			continue
+		}
+		input.Close()
+
 		// Decode the photo.
-		photoImage, format, err := image.Decode(input)
+		photoImage, format, err := image.Decode(bytes.NewReader(photoBytes))
 		if err != nil {
-			fmt.Println("Failed to decode image:", err)
+			rev.ERROR.Println("Failed to decode image:", err)
 			continue
 		}
 
@@ -112,7 +122,7 @@ func (c Application) PostUpload(name string) rev.Result {
 		thumbnail := image.NewRGBA(image.Rect(0, 0, 256, 256))
 		err = graphics.Thumbnail(thumbnail, photoImage)
 		if err != nil {
-			fmt.Println("Failed to create thumbnail:", err)
+			rev.ERROR.Println("Failed to create thumbnail:", err)
 			continue
 		}
 
@@ -133,14 +143,12 @@ func (c Application) PostUpload(name string) rev.Result {
 		// Save the photo
 		output, err := os.Create(path.Join(photoDir, photoName))
 		if err != nil {
-			input.Close()
 			c.FlashParams()
 			c.Flash.Error("Error creating file:", err)
 			return c.Redirect(Application.Upload)
 		}
 
-		_, err = io.Copy(output, input)
-		input.Close()
+		_, err = io.Copy(output, bytes.NewReader(photoBytes))
 		output.Close()
 		if err != nil {
 			c.FlashParams()
@@ -171,7 +179,33 @@ func (c Application) Download(paths []string) rev.Result {
 		return c.RenderError(fmt.Errorf("Nothing to download"))
 	}
 
-	return c.Todo()
+	c.Response.Out.Header().Set("Content-Disposition", "attachment")
+	c.Response.WriteHeader(200, "application/zip")
+
+	wr := zip.NewWriter(c.Response.Out)
+	defer wr.Close()
+
+	for _, photoPath := range paths {
+		file, err := os.Open(path.Join(PHOTO_DIRECTORY, photoPath))
+		if err != nil {
+			rev.ERROR.Println("Failed to create photo in zip:", err)
+			continue
+		}
+
+		photoWr, err := wr.Create(photoPath)
+		if err != nil {
+			rev.ERROR.Println("Failed to create photo in zip:", err)
+			continue
+		}
+
+		_, err = io.Copy(photoWr, file)
+		if err != nil {
+			rev.ERROR.Println("Error writing photo:", err)
+			return nil
+		}
+	}
+
+	return nil
 }
 
 type PhotoServerPlugin struct {
