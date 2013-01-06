@@ -1,9 +1,31 @@
 {{set . "title" "Home"}}
 {{template "header.html" .}}
 
-{{template "messages.html" .}}
+<style>
+.photo img {
+	padding: 5px;
+}
+.photo:hover img {
+	border: 4px dashed #666;
+	padding: 1px;
+}
+.photo.selected img {
+	border: 4px solid #468847;
+	padding: 1px;
+}
+.cart {
+	position: fixed;
+	border: 5px dashed #666;
+	top: 0;
+	right: 0;
+	padding: 10px;
+	background-color: #FFF;
+}
+</style>
 
 <div class="container">
+
+{{template "messages.html" .}}
 
 {{range $username, $photos := .userPhotos}}
   <div class="page-header">
@@ -12,16 +34,39 @@
 
   <div class="row">
 {{range $index, $photo := $photos}}
-	  <div class="span4">
-			<img src="/photos/{{$username}}/{{$photo}}">
+	  <div class="span4 photo" path="{{$username}}/{{$photo}}">
+			<img src="/photos/thumbs/{{$username}}/{{$photo}}">
 		</div>
 {{end}}
 	</div>
 {{end}}
 
+<div class="cart">
+	<p><span id="num-photos">0</span> photos selected.</p>
+	<button class="btn btn-primary btn-large">Download</button>
+</div>
+
 <a href="/Application/Upload">Upload your photos.</a>
 
 </div>
+
+<script>
+var numSelected = 0;
+$(".photo").click(function(e) {
+	if ($(this).hasClass("selected")) {
+		$(this).removeClass("selected");
+		numSelected--;
+	} else {
+		$(this).addClass("selected");
+		numSelected++;
+	}
+	$("#num-photos").text(numSelected);
+});
+
+$(".download").click(function(e) {
+	$.post("/Application/Download", {"paths": $(".photo.selected").attr("path")});
+});
+</script>
 
 {{template "footer.html" .}}
 

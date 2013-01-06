@@ -1,13 +1,12 @@
 package controllers
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"database/sql"
 	"github.com/coopernurse/gorp"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/robfig/revel"
 	"github.com/robfig/revel/modules/db/app"
-	"github.com/robfig/revel/samples/booking/app/models"
+	"wharton/app/models"
 )
 
 var (
@@ -22,15 +21,10 @@ func (p GorpPlugin) OnAppStart() {
 	db.DbPlugin{}.OnAppStart()
 	dbm = &gorp.DbMap{Db: db.Db, Dialect: gorp.SqliteDialect{}}
 	dbm.TraceOn("[gorp]", rev.INFO)
-
-	result, _ := dbm.Exec("show tables")
-	if rows, _ := result.RowsAFfected(); rows == 0 {
-		rev.INFO.Println("Creating database..")
-		t := dbm.AddTable(models.Photo{}).SetKeys(true, "PhotoId")
-		t.ColMap("Taken").Transient = true
-		t.ColMap("Uploaded").Transient = true
-		dbm.CreateTables()
-	}
+	t := dbm.AddTable(models.Photo{}).SetKeys(true, "PhotoId")
+	t.ColMap("Taken").Transient = true
+	t.ColMap("Uploaded").Transient = true
+	dbm.CreateTables()
 }
 
 type GorpController struct {

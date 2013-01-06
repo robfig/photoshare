@@ -1,5 +1,11 @@
 package models
 
+import (
+	"fmt"
+	"github.com/coopernurse/gorp"
+	"time"
+)
+
 type Photo struct {
 	PhotoId  int    // Auto-incrementing key.
 	Name     string // From the filename

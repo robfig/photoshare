@@ -1,14 +1,16 @@
 {{template "header.html" .}}
 
+<div class="container">
+
 <h2>Upload your photos</h2>
 
 {{template "messages.html" .}}
 
-<form action="/Application/PostUpload" method="POST" enctype="multipart/form-data">
+<form action="/Application/PostUpload" method="POST" enctype="multipart/form-data" class="form-inline">
 	<fieldset>
 		<div class="field">
-			<label for="name">Name:</label>
-			<input id="name" name="name" value="{{.flash.name}}" class="{{errorClass "name" .}}"/>
+			<label for="name">Your Name:</label>
+			<input type="text" id="name" name="name" value="{{.flash.name}}" class="{{errorClass "name" .}}"/>
 			<span class="error">{{.errors.name}}</span>
 		</div>
 
@@ -21,6 +23,8 @@
 		<input type="submit">
 	</fieldset>
 </form>
+
+</div>
 
 {{template "footer.html" .}}
 

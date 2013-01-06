@@ -4,20 +4,21 @@ import (
 	"code.google.com/p/graphics-go/graphics"
 	"fmt"
 	"github.com/robfig/revel"
+	"image"
 	_ "image/gif"
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 	"io"
 	"os"
 	"path"
-	"reflect"
 	"time"
+	"wharton/app/models"
 )
 
 const PHOTO_DIRECTORY = "/Users/robfig/whartonphotos"
 
 type Application struct {
-	*rev.Controller
+	GorpController
 }
 
 func (c Application) Index() rev.Result {
@@ -33,7 +34,7 @@ func (c Application) Index() rev.Result {
 
 	userPhotos := map[string][]string{}
 	for _, fileInfo := range fileInfos {
-		if fileInfo.IsDir() {
+		if fileInfo.IsDir() && fileInfo.Name() != "thumbs" {
 			userPhotos[fileInfo.Name()] = []string{}
 		}
 	}
@@ -81,7 +82,7 @@ func (c Application) PostUpload(name string) rev.Result {
 		c.Flash.Error("Error making directory:", err)
 		return c.Redirect(Application.Upload)
 	}
-	err := os.MkdirAll(thumbDir, 0777)
+	err = os.MkdirAll(thumbDir, 0777)
 	if err != nil {
 		c.FlashParams()
 		c.Flash.Error("Error making directory:", err)
@@ -89,9 +90,9 @@ func (c Application) PostUpload(name string) rev.Result {
 	}
 
 	photos := c.Params.Files["photos[]"]
-	for _, photo := range photos {
+	for _, photoFileHeader := range photos {
 		// Open the photo.
-		input, err := photo.Open()
+		input, err := photoFileHeader.Open()
 		if err != nil {
 			c.FlashParams()
 			c.Flash.Error("Error opening photo:", err)
@@ -105,22 +106,24 @@ func (c Application) PostUpload(name string) rev.Result {
 			continue
 		}
 
+		photoName := path.Base(photoFileHeader.Filename)
+
 		// Create a thumbnail
-		thumbnail := image.NewRGBA(0, 0, 256, 256)
+		thumbnail := image.NewRGBA(image.Rect(0, 0, 256, 256))
 		err = graphics.Thumbnail(thumbnail, photoImage)
 		if err != nil {
 			fmt.Println("Failed to create thumbnail:", err)
 			continue
 		}
 
-		thumbnailFile, err := os.Create(path.Join(PHOTO_DIRECTORY, "thumbs", userDir, photo.Name))
+		thumbnailFile, err := os.Create(path.Join(thumbDir, photoName))
 		if err != nil {
 			c.FlashParams()
 			c.Flash.Error("Error creating file:", err)
 			return c.Redirect(Application.Upload)
 		}
 
-		err = jpeg.Encode(thumbnailFile, thumbnail)
+		err = jpeg.Encode(thumbnailFile, thumbnail, nil)
 		if err != nil {
 			c.FlashParams()
 			c.Flash.Error("Failed to save thumbnail:", err)
@@ -128,7 +131,7 @@ func (c Application) PostUpload(name string) rev.Result {
 		}
 
 		// Save the photo
-		output, err := os.Create(path.Join(userDir, photo.Name))
+		output, err := os.Create(path.Join(photoDir, photoName))
 		if err != nil {
 			input.Close()
 			c.FlashParams()
@@ -147,10 +150,10 @@ func (c Application) PostUpload(name string) rev.Result {
 
 		// Save a record of the photo to our database.
 		rect := photoImage.Bounds()
-		photo := Photo{
+		photo := models.Photo{
 			Username: name,
 			Format:   format,
-			Name:     path.Base(photo.Filename),
+			Name:     photoName,
 			Width:    rect.Max.X - rect.Min.X,
 			Height:   rect.Max.Y - rect.Min.Y,
 			Uploaded: time.Now(),
@@ -161,6 +164,14 @@ func (c Application) PostUpload(name string) rev.Result {
 
 	c.Flash.Success("%d photos uploaded.", len(photos))
 	return c.Redirect(Application.Index)
+}
+
+func (c Application) Download(paths []string) rev.Result {
+	if len(paths) == 0 {
+		return c.RenderError(fmt.Errorf("Nothing to download"))
+	}
+
+	return c.Todo()
 }
 
 type PhotoServerPlugin struct {
