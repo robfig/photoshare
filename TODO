@@ -1,0 +1,14 @@
+Paging for gallery.
+Sort orders for gallery.
+Voting.
+Tagging.
+Should be able to accept photos []*multipart.FileHeader
+Support RAW/CR2 (canon) and CNEG (nikon)
+Read EXIF data and allow reset by time zone?
+Show EXIF geolocation on a map.
+Have a page showing the upload status, and don't block user on thumbnail creation.
+Handle EXIF rotation when viewing original photo
+
+Group by User?
+Order by time taken, votes
+

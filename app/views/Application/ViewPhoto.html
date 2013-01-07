@@ -1,0 +1,25 @@
+{{set . "title" "View photo"}}
+{{template "header.html" .}}
+
+<div class="container">
+	<div class="row">
+		<span class="span1">
+			<a href="">Left</a>
+		</span>
+		<span class="span10">
+			<img src="/photos/{{.photo.Username}}/{{.photo.Name}}">
+
+			<table class="table table-striped">
+				<tr><td>Uploaded by</td><td>{{.photo.Username}}</td></tr>
+				<tr><td>Taken</td><td>{{.photo.Taken}}</td></tr>
+				<tr><td>Dimensions</td><td>{{.photo.Width}}x{{.photo.Height}}</td></tr>
+			</table>
+		</span>
+		<span class="span1">
+			<a href="">Right</a>
+		</span>
+	</div>
+</div>
+
+{{template "footer.html" .}}
+

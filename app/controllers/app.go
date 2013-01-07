@@ -26,15 +26,48 @@ type Application struct {
 	GorpController
 }
 
-func (c Application) Index() rev.Result {
+func (c Application) View() rev.Result {
+	userPhotos, err := getUserPhotos()
+	if err != nil {
+		return c.RenderError(err)
+	}
+	return c.Render(userPhotos)
+}
+
+func (c Application) Download() rev.Result {
+	userPhotos, err := getUserPhotos()
+	if err != nil {
+		return c.RenderError(err)
+	}
+	return c.Render(userPhotos)
+}
+
+func (c Application) ViewPhoto(username, filename string) rev.Result {
+	photos, err := c.Txn.Select(models.Photo{},
+		"select * from Photo where Username = ? and Name = ?",
+		username, filename)
+	if err != nil {
+		return c.RenderError(err)
+	}
+
+	if len(photos) == 0 {
+		return c.NotFound("No photo found.")
+	}
+
+	photo := photos[0]
+	return c.Render(photo)
+}
+
+// Return an array of user names to photo paths.
+func getUserPhotos() (map[string][]string, error) {
 	dir, err := os.Open(PHOTO_DIRECTORY)
 	if err != nil {
-		return c.RenderError(fmt.Errorf("Failed to open photo directory: %s", err))
+		return nil, fmt.Errorf("Failed to open photo directory: %s", err)
 	}
 
 	fileInfos, err := dir.Readdir(-1)
 	if err != nil {
-		return c.RenderError(fmt.Errorf("Failed to read photo directory: %s", err))
+		return nil, fmt.Errorf("Failed to read photo directory: %s", err)
 	}
 
 	userPhotos := map[string][]string{}
@@ -47,18 +80,17 @@ func (c Application) Index() rev.Result {
 	for username, _ := range userPhotos {
 		userDir, err := os.Open(path.Join(PHOTO_DIRECTORY, username))
 		if err != nil {
-			return c.RenderError(fmt.Errorf("Failed to open user's directory: %s", err))
+			return nil, fmt.Errorf("Failed to open user's directory: %s", err)
 		}
 
 		names, err := userDir.Readdirnames(-1)
 		if err != nil {
-			return c.RenderError(fmt.Errorf("Failed to read user's directory: %s", err))
+			return nil, fmt.Errorf("Failed to read user's directory: %s", err)
 		}
 
 		userPhotos[username] = names
 	}
-
-	return c.Render(userPhotos)
+	return userPhotos, nil
 }
 
 func (c Application) Upload() rev.Result {
@@ -72,11 +104,6 @@ var ORIENTATION_ANGLES = map[int]float64{
 	8: math.Pi / 2,
 }
 
-// TODO: Should be able to accept photos []*multipart.FileHeader
-// TODO: Support RAW/CR2 (canon) and CNEG (nikon)
-// TODO: Handle EXIF rotation
-// TODO: Read EXIF data and allow reset by time zone?
-// TODO: Disposition/attachment?
 func (c Application) PostUpload(name string) rev.Result {
 	c.Validation.Required(name)
 
@@ -215,10 +242,10 @@ func (c Application) PostUpload(name string) rev.Result {
 	}
 
 	c.Flash.Success("%d photos uploaded.", len(photos))
-	return c.Redirect(Application.Index)
+	return c.Redirect(Application.View)
 }
 
-func (c Application) Download(paths []string) rev.Result {
+func (c Application) PostDownload(paths []string) rev.Result {
 	if len(paths) == 0 {
 		return c.RenderError(fmt.Errorf("Nothing to download"))
 	}

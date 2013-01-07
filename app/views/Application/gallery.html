@@ -1,0 +1,15 @@
+{{range $username, $photos := .userPhotos}}
+  <div class="page-header">
+    <h1>{{$username}}</h1>
+  </div>
+
+  <div class="row">
+{{range $index, $photo := $photos}}
+	  <div class="span4 photo" path="{{$username}}/{{$photo}}">
+			<a href="/view/{{$username}}/{{$photo}}">
+				<img src="/photos/thumbs/{{$username}}/{{$photo}}">
+			</a>
+		</div>
+{{end}}
+	</div>
+{{end}}

@@ -1,4 +1,4 @@
-{{set . "title" "Home"}}
+{{set . "title" "Download photos"}}
 {{template "header.html" .}}
 
 <style>
@@ -24,30 +24,16 @@
 </style>
 
 <div class="container">
-<form method="post" action="/Application/Download" target="_blank">
+<form method="post" action="/Application/PostDownload" target="_blank">
 
 {{template "messages.html" .}}
 
-{{range $username, $photos := .userPhotos}}
-  <div class="page-header">
-    <h1>{{$username}}</h1>
-  </div>
-
-  <div class="row">
-{{range $index, $photo := $photos}}
-	  <div class="span4 photo" path="{{$username}}/{{$photo}}">
-			<img src="/photos/thumbs/{{$username}}/{{$photo}}">
-		</div>
-{{end}}
-	</div>
-{{end}}
+{{template "Application/gallery.html" .}}
 
 <div class="cart">
 	<p style="font-size: 16px;"><span id="num-photos">0</span> photos selected.</p>
 	<button class="btn btn-primary btn-large">Download</button>
 </div>
-
-<a href="/Application/Upload">Upload your photos.</a>
 
 </form>
 </div>
@@ -63,6 +49,7 @@ $(".photo").click(function(e) {
 		numSelected++;
 	}
 	$("#num-photos").text(numSelected);
+	return false;
 });
 
 $("form").submit(function(e) {
