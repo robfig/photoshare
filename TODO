@@ -8,7 +8,15 @@ Read EXIF data and allow reset by time zone?
 Show EXIF geolocation on a map.
 Have a page showing the upload status, and don't block user on thumbnail creation.
 Handle EXIF rotation when viewing original photo
+Handle uploading the same filename from the same user.
+Add caption that can be set by anyone. (or the uplaoder)
 
-Group by User?
+Group by User.  Group by Day.
 Order by time taken, votes
+
+Use datetime type for time columns (instead of varchar)
+
+Hosting;
+- Can host from FiOS?
+- EC2
 

@@ -1,13 +1,13 @@
-{{range $username, $photos := .userPhotos}}
+{{range $group, $photos := .gallery}}
   <div class="page-header">
-    <h1>{{$username}}</h1>
+    <h1>{{$group}}</h1>
   </div>
 
   <div class="row">
-{{range $index, $photo := $photos}}
-	  <div class="span4 photo" path="{{$username}}/{{$photo}}">
-			<a href="/view/{{$username}}/{{$photo}}">
-				<img src="/photos/thumbs/{{$username}}/{{$photo}}">
+{{range $photo, $index := $photos}}
+	  <div class="span4 photo" path="{{.Username}}/{{.Name}}">
+			<a href="/view/{{.Username}}/{{.Name}}">
+				<img src="/photos/thumbs/{{.Username}}/{{.Name}}">
 			</a>
 		</div>
 {{end}}

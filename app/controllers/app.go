@@ -26,20 +26,27 @@ type Application struct {
 	GorpController
 }
 
+type Grouping string
+
+const (
+	BY_USER Grouping = "Username"
+	BY_DATE          = "TakenStr"
+)
+
 func (c Application) View() rev.Result {
-	userPhotos, err := getUserPhotos()
+	gallery, err := c.getGallery(0, 100)
 	if err != nil {
 		return c.RenderError(err)
 	}
-	return c.Render(userPhotos)
+	return c.Render(gallery)
 }
 
 func (c Application) Download() rev.Result {
-	userPhotos, err := getUserPhotos()
+	gallery, err := c.getGallery(0, 100)
 	if err != nil {
 		return c.RenderError(err)
 	}
-	return c.Render(userPhotos)
+	return c.Render(gallery)
 }
 
 func (c Application) ViewPhoto(username, filename string) rev.Result {
@@ -59,38 +66,24 @@ func (c Application) ViewPhoto(username, filename string) rev.Result {
 }
 
 // Return an array of user names to photo paths.
-func getUserPhotos() (map[string][]string, error) {
-	dir, err := os.Open(PHOTO_DIRECTORY)
+// TODO: How to get the map to be ordered.
+func (c Application) getGallery(start, num int) (map[string][]*models.Photo, error) {
+	photos, err := c.Txn.Select(models.Photo{},
+		"select * from Photo order by Username, TakenStr limit ?, ?",
+		start, num)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open photo directory: %s", err)
+		return nil, err
 	}
 
-	fileInfos, err := dir.Readdir(-1)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to read photo directory: %s", err)
-	}
-
-	userPhotos := map[string][]string{}
-	for _, fileInfo := range fileInfos {
-		if fileInfo.IsDir() && fileInfo.Name() != "thumbs" {
-			userPhotos[fileInfo.Name()] = []string{}
+	groupedPhotos := map[string][]*models.Photo{}
+	for _, photoInterface := range photos {
+		photo := photoInterface.(*models.Photo)
+		if _, ok := groupedPhotos[photo.Username]; !ok {
+			groupedPhotos[photo.Username] = []*models.Photo{}
 		}
+		groupedPhotos[photo.Username] = append(groupedPhotos[photo.Username], photo)
 	}
-
-	for username, _ := range userPhotos {
-		userDir, err := os.Open(path.Join(PHOTO_DIRECTORY, username))
-		if err != nil {
-			return nil, fmt.Errorf("Failed to open user's directory: %s", err)
-		}
-
-		names, err := userDir.Readdirnames(-1)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to read user's directory: %s", err)
-		}
-
-		userPhotos[username] = names
-	}
-	return userPhotos, nil
+	return groupedPhotos, nil
 }
 
 func (c Application) Upload() rev.Result {
