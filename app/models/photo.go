@@ -21,22 +21,22 @@ type Photo struct {
 }
 
 const (
-	DATE_FORMAT     = "Jan _2, 2006"
-	SQL_DATE_FORMAT = "2006-01-02"
+	DATE_FORMAT         = "Jan _2, 2006"
+	SQL_DATETIME_FORMAT = "2006-01-02 15:04:05"
 )
 
 func (p *Photo) PreInsert(_ gorp.SqlExecutor) error {
-	p.TakenStr = p.Uploaded.Format(SQL_DATE_FORMAT)
-	p.UploadedStr = p.Taken.Format(SQL_DATE_FORMAT)
+	p.TakenStr = p.Uploaded.Format(SQL_DATETIME_FORMAT)
+	p.UploadedStr = p.Taken.Format(SQL_DATETIME_FORMAT)
 	return nil
 }
 
 func (p *Photo) PostGet(_ gorp.SqlExecutor) error {
 	var err error
-	if p.Taken, err = time.Parse(SQL_DATE_FORMAT, p.TakenStr); err != nil {
+	if p.Taken, err = time.Parse(SQL_DATETIME_FORMAT, p.TakenStr); err != nil {
 		return fmt.Errorf("Error parsing taken date '%s':", p.TakenStr, err)
 	}
-	if p.Uploaded, err = time.Parse(SQL_DATE_FORMAT, p.UploadedStr); err != nil {
+	if p.Uploaded, err = time.Parse(SQL_DATETIME_FORMAT, p.UploadedStr); err != nil {
 		return fmt.Errorf("Error parsing uploaded date '%s':", p.UploadedStr, err)
 	}
 	return nil
