@@ -6,12 +6,14 @@ import (
 	"code.google.com/p/graphics-go/graphics"
 	"fmt"
 	"github.com/robfig/revel"
+	"github.com/rwcarlsen/goexif/exif"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
 	_ "image/png"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"time"
@@ -61,6 +63,13 @@ func (c Application) Index() rev.Result {
 
 func (c Application) Upload() rev.Result {
 	return c.Render()
+}
+
+var ORIENTATION_ANGLES = map[int]float64{
+	1: 0.0,
+	3: math.Pi,
+	6: math.Pi * 3 / 2,
+	8: math.Pi / 2,
 }
 
 // TODO: Should be able to accept photos []*multipart.FileHeader
@@ -116,6 +125,18 @@ func (c Application) PostUpload(name string) rev.Result {
 			continue
 		}
 
+		// Decode the EXIF data
+		x, err := exif.Decode(bytes.NewReader(photoBytes))
+		if err != nil {
+			rev.ERROR.Println("Failed to decode image exif:", err)
+			continue
+		}
+
+		var orientation int = 1
+		if orientationTag, err := x.Get(exif.Orientation); err == nil {
+			orientation = int(orientationTag.Int(0))
+		}
+
 		photoName := path.Base(photoFileHeader.Filename)
 
 		// Create a thumbnail
@@ -124,6 +145,20 @@ func (c Application) PostUpload(name string) rev.Result {
 		if err != nil {
 			rev.ERROR.Println("Failed to create thumbnail:", err)
 			continue
+		}
+
+		// If the EXIF said to, rotate the thumbnail.
+		// TODO: maintain the EXIF in the thumb instead.
+		if orientation != 1 {
+			if angleRadians, ok := ORIENTATION_ANGLES[orientation]; ok {
+				rotatedThumbnail := image.NewRGBA(image.Rect(0, 0, 256, 256))
+				err = graphics.Rotate(rotatedThumbnail, thumbnail, &graphics.RotateOptions{Angle: angleRadians})
+				if err != nil {
+					rev.ERROR.Println("Failed to rotate:", err)
+				} else {
+					thumbnail = rotatedThumbnail
+				}
+			}
 		}
 
 		thumbnailFile, err := os.Create(path.Join(thumbDir, photoName))
@@ -156,6 +191,14 @@ func (c Application) PostUpload(name string) rev.Result {
 			return c.Redirect(Application.Upload)
 		}
 
+		var taken time.Time
+		if takenTag, err := x.Get("DateTimeOriginal"); err == nil {
+			taken, err = time.Parse("2006:01:02 15:04:05", takenTag.StringVal())
+			if err != nil {
+				rev.ERROR.Println("Failed to parse time:", takenTag.StringVal(), ":", err)
+			}
+		}
+
 		// Save a record of the photo to our database.
 		rect := photoImage.Bounds()
 		photo := models.Photo{
@@ -165,6 +208,7 @@ func (c Application) PostUpload(name string) rev.Result {
 			Width:    rect.Max.X - rect.Min.X,
 			Height:   rect.Max.Y - rect.Min.Y,
 			Uploaded: time.Now(),
+			Taken:    taken,
 		}
 
 		c.Txn.Insert(&photo)
