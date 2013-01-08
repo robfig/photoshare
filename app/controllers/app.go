@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"code.google.com/p/graphics-go/graphics"
 	"fmt"
+	"github.com/robfig/photoshare/app/models"
 	"github.com/robfig/revel"
 	"github.com/rwcarlsen/goexif/exif"
 	"image"
@@ -17,10 +18,9 @@ import (
 	"os"
 	"path"
 	"time"
-	"wharton/app/models"
 )
 
-const PHOTO_DIRECTORY = "/Users/robfig/whartonphotos"
+var PHOTO_DIRECTORY string
 
 type Application struct {
 	GorpController
@@ -280,6 +280,14 @@ func (c Application) PostDownload(paths []string) rev.Result {
 
 type PhotoServerPlugin struct {
 	rev.EmptyPlugin
+}
+
+func (t PhotoServerPlugin) OnAppStart() {
+	var ok bool
+	PHOTO_DIRECTORY, ok = rev.Config.String("datadir")
+	if !ok {
+		rev.ERROR.Fatalln("Must define datadir in app.conf")
+	}
 }
 
 func (t PhotoServerPlugin) OnRoutesLoaded(router *rev.Router) {
