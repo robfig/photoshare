@@ -26,6 +26,11 @@ type Application struct {
 	GorpController
 }
 
+const (
+	VIEW     = "Application/View.html"
+	DOWNLOAD = "Application/Download.html"
+)
+
 type Grouping string
 
 const (
@@ -34,19 +39,20 @@ const (
 )
 
 func (c Application) View() rev.Result {
-	gallery, err := c.getGallery(0, 100)
-	if err != nil {
-		return c.RenderError(err)
-	}
-	return c.Render(gallery)
+	return c.gallery(VIEW)
 }
 
 func (c Application) Download() rev.Result {
+	return c.gallery(DOWNLOAD)
+}
+
+func (c Application) gallery(template string) rev.Result {
 	gallery, err := c.getGallery(0, 100)
 	if err != nil {
 		return c.RenderError(err)
 	}
-	return c.Render(gallery)
+	c.RenderArgs["gallery"] = gallery
+	return c.RenderTemplate(template)
 }
 
 func (c Application) ViewPhoto(username, filename string) rev.Result {
