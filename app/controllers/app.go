@@ -282,14 +282,6 @@ type PhotoServerPlugin struct {
 	rev.EmptyPlugin
 }
 
-func (t PhotoServerPlugin) OnAppStart() {
-	var ok bool
-	PHOTO_DIRECTORY, ok = rev.Config.String("datadir")
-	if !ok {
-		rev.ERROR.Fatalln("Must define datadir in app.conf")
-	}
-}
-
 func (t PhotoServerPlugin) OnRoutesLoaded(router *rev.Router) {
 	router.Routes = append([]*rev.Route{
 		rev.NewRoute("GET", "/photos/", "staticDir:"+PHOTO_DIRECTORY),
@@ -297,5 +289,12 @@ func (t PhotoServerPlugin) OnRoutesLoaded(router *rev.Router) {
 }
 
 func init() {
+	rev.InitHooks = append(rev.InitHooks, func() {
+		var ok bool
+		PHOTO_DIRECTORY, ok = rev.Config.String("datadir")
+		if !ok {
+			rev.ERROR.Fatalln("Must define datadir in app.conf")
+		}
+	})
 	rev.RegisterPlugin(PhotoServerPlugin{})
 }
