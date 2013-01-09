@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"github.com/robfig/photoshare/app/models"
 	"github.com/robfig/revel"
+	"github.com/robfig/revel/modules/db/app"
 	"github.com/rwcarlsen/goexif/exif"
+	"html/template"
 	"image"
 	_ "image/gif"
 	"image/jpeg"
@@ -38,20 +40,42 @@ const (
 	BY_DATE          = "TakenStr"
 )
 
-func (c Application) View() rev.Result {
-	return c.gallery(VIEW)
+func (c Application) View(page int) rev.Result {
+	return c.gallery(VIEW, page)
 }
 
-func (c Application) Download() rev.Result {
-	return c.gallery(DOWNLOAD)
+func (c Application) Download(page int) rev.Result {
+	return c.gallery(DOWNLOAD, page)
 }
 
-func (c Application) gallery(template string) rev.Result {
-	gallery, err := c.getGallery(0, 100)
+const PHOTOS_PER_PAGE = 100
+
+func (c Application) gallery(template string, page int) rev.Result {
+	// Collect the photo gallery.
+	if page == 0 {
+		page = 1
+	}
+	start := (page - 1) * PHOTOS_PER_PAGE
+	end := start + PHOTOS_PER_PAGE
+	gallery, err := c.getGallery(start, end)
 	if err != nil {
 		return c.RenderError(err)
 	}
 	c.RenderArgs["gallery"] = gallery
+
+	// Prepare the pagination control.
+	url := c.Request.URL
+	if gallery.Total < end {
+		end = gallery.Total
+	}
+	c.RenderArgs["pagination"] = Pagination{
+		CurrentPage: page,
+		NumPages:    gallery.Total/PHOTOS_PER_PAGE + 1,
+		BaseUrl:     fmt.Sprintf("http://%s/%s", url.Host, url.Path),
+		Start:       start + 1,
+		End:         end,
+		Total:       gallery.Total,
+	}
 	return c.RenderTemplate(template)
 }
 
@@ -71,9 +95,14 @@ func (c Application) ViewPhoto(username, filename string) rev.Result {
 	return c.Render(photo)
 }
 
+type Gallery struct {
+	Photos map[string][]*models.Photo
+	Total  int
+}
+
 // Return an array of user names to photo paths.
 // TODO: How to get the map to be ordered.
-func (c Application) getGallery(start, num int) (map[string][]*models.Photo, error) {
+func (c Application) getGallery(start, num int) (*Gallery, error) {
 	photos, err := c.Txn.Select(models.Photo{},
 		"select * from Photo order by Username, TakenStr limit ?, ?",
 		start, num)
@@ -89,7 +118,13 @@ func (c Application) getGallery(start, num int) (map[string][]*models.Photo, err
 		}
 		groupedPhotos[photo.Username] = append(groupedPhotos[photo.Username], photo)
 	}
-	return groupedPhotos, nil
+
+	// TODO: Switch to Hood or resolve Gorp issue
+	var total int
+	row := db.Db.QueryRow("select count(*) from Photo")
+	row.Scan(&total)
+
+	return &Gallery{groupedPhotos, total}, nil
 }
 
 func (c Application) Upload() rev.Result {
@@ -286,6 +321,47 @@ func (t PhotoServerPlugin) OnRoutesLoaded(router *rev.Router) {
 	router.Routes = append([]*rev.Route{
 		rev.NewRoute("GET", "/photos/", "staticDir:"+PHOTO_DIRECTORY),
 	}, router.Routes...)
+}
+
+type Pagination struct {
+	CurrentPage int
+	NumPages    int
+	BaseUrl     string
+
+	Start, End, Total int
+}
+
+func (p Pagination) Pages() []Page {
+	pages := make([]Page, p.NumPages+2, p.NumPages+2)
+	pages[0] = Page{
+		Label:    "Prev",
+		Disabled: p.CurrentPage == 1,
+		Url:      p.PageUrl(p.CurrentPage - 1),
+	}
+	for i := 1; i <= p.NumPages; i++ {
+		pages[i] = Page{
+			Label:  fmt.Sprintf("%d", i),
+			Active: i == p.CurrentPage,
+			Url:    p.PageUrl(i),
+		}
+	}
+	pages[p.NumPages+1] = Page{
+		Label:    "Next",
+		Disabled: p.CurrentPage == p.NumPages,
+		Url:      p.PageUrl(p.CurrentPage + 1),
+	}
+	return pages
+}
+
+func (p Pagination) PageUrl(page int) template.HTML {
+	return template.HTML(fmt.Sprintf("%s?page=%d", p.BaseUrl, page))
+}
+
+type Page struct {
+	Label    string
+	Active   bool
+	Disabled bool
+	Url      template.HTML
 }
 
 func init() {

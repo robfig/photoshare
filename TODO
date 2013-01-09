@@ -1,10 +1,9 @@
-How do I pass an arg in the routes file?  E.g. activate same controller with diff arg.
 Paging for gallery.
 Sort orders for gallery.
 Voting.
 Tagging.
+Stream reading the uploaded photos.
 Should be able to accept photos []*multipart.FileHeader
-Support RAW/CR2 (canon) and CNEG (nikon)
 Read EXIF data and allow reset by time zone?
 Show EXIF geolocation on a map.
 Have a page showing the upload status, and don't block user on thumbnail creation.
@@ -16,8 +15,3 @@ Group by User.  Group by Day.
 Order by time taken, votes
 
 Use datetime type for time columns (instead of varchar)
-
-Hosting;
-- Can host from FiOS?
-- EC2
-

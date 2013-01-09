@@ -1,0 +1,9 @@
+<div class="pagination pagination-right">
+  <ul>
+		{{range .Pages}}
+      <li {{if .Disabled}}class="disabled"{{end}} {{if .Active}}class="active"{{end}}>
+				<a href="{{.Url}}">{{.Label}}</a></li>
+		{{end}}
+  </ul>
+</div>
+<div class="pull-right">Showing {{.Start}} to {{.End}} of {{.Total}} photos</div>
