@@ -17,6 +17,9 @@ type Photo struct {
 	Taken    time.Time // Initially set from EXIF data, but may be subsequently updated.
 	Uploaded time.Time // Time of the upload (on record creation).
 
+	PhotoUrl string // Amazon S3 URLs to the photo and thumbnails.
+	ThumbUrl string
+
 	TakenStr, UploadedStr string // Temporary fields used to store time.Time as a string.
 }
 

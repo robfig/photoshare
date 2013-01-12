@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"code.google.com/p/graphics-go/graphics"
 	"fmt"
+	"github.com/robfig/goamz/aws"
+	"github.com/robfig/goamz/s3"
 	"github.com/robfig/photoshare/app/models"
 	"github.com/robfig/revel"
 	"github.com/robfig/revel/modules/db/app"
@@ -17,12 +19,22 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
-	"os"
+	"net/http"
 	"path"
 	"time"
 )
 
-var PHOTO_DIRECTORY string
+var PHOTO_BUCKET *s3.Bucket
+
+// Initialize the AWS connection configuration.
+func init() {
+	auth, err := aws.EnvAuth()
+	if err != nil {
+		rev.ERROR.Fatalln(`AWS Authorization Required.
+Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.`)
+	}
+	PHOTO_BUCKET = s3.New(auth, aws.USEast).Bucket("whartonphotos")
+}
 
 type Application struct {
 	GorpController
@@ -147,28 +159,15 @@ func (c Application) PostUpload(name string) rev.Result {
 		return c.Redirect(Application.Upload)
 	}
 
-	photoDir := path.Join(PHOTO_DIRECTORY, name)
-	thumbDir := path.Join(PHOTO_DIRECTORY, "thumbs", name)
-	err := os.MkdirAll(photoDir, 0777)
-	if err != nil {
-		c.FlashParams()
-		c.Flash.Error("Error making directory:", err)
-		return c.Redirect(Application.Upload)
-	}
-	err = os.MkdirAll(thumbDir, 0777)
-	if err != nil {
-		c.FlashParams()
-		c.Flash.Error("Error making directory:", err)
-		return c.Redirect(Application.Upload)
-	}
-
+	photoDir := path.Join("original", name)
+	thumbDir := path.Join("250x250", name)
 	photos := c.Params.Files["photos[]"]
 	for _, photoFileHeader := range photos {
 		// Open the photo.
 		input, err := photoFileHeader.Open()
 		if err != nil {
 			c.FlashParams()
-			c.Flash.Error("Error opening photo:", err)
+			c.Flash.Error("Error opening photo: %s", err)
 			return c.Redirect(Application.Upload)
 		}
 
@@ -201,7 +200,7 @@ func (c Application) PostUpload(name string) rev.Result {
 		photoName := path.Base(photoFileHeader.Filename)
 
 		// Create a thumbnail
-		thumbnail := image.NewRGBA(image.Rect(0, 0, 256, 256))
+		thumbnail := image.NewRGBA(image.Rect(0, 0, 250, 250))
 		err = graphics.Thumbnail(thumbnail, photoImage)
 		if err != nil {
 			rev.ERROR.Println("Failed to create thumbnail:", err)
@@ -209,10 +208,9 @@ func (c Application) PostUpload(name string) rev.Result {
 		}
 
 		// If the EXIF said to, rotate the thumbnail.
-		// TODO: maintain the EXIF in the thumb instead.
 		if orientation != 1 {
 			if angleRadians, ok := ORIENTATION_ANGLES[orientation]; ok {
-				rotatedThumbnail := image.NewRGBA(image.Rect(0, 0, 256, 256))
+				rotatedThumbnail := image.NewRGBA(image.Rect(0, 0, 250, 250))
 				err = graphics.Rotate(rotatedThumbnail, thumbnail, &graphics.RotateOptions{Angle: angleRadians})
 				if err != nil {
 					rev.ERROR.Println("Failed to rotate:", err)
@@ -222,33 +220,36 @@ func (c Application) PostUpload(name string) rev.Result {
 			}
 		}
 
-		thumbnailFile, err := os.Create(path.Join(thumbDir, photoName))
+		var thumbnailBuffer bytes.Buffer
+		err = jpeg.Encode(&thumbnailBuffer, thumbnail, nil)
 		if err != nil {
 			c.FlashParams()
-			c.Flash.Error("Error creating file:", err)
+			c.Flash.Error("Failed to encode thumbnail:", err)
 			return c.Redirect(Application.Upload)
 		}
 
-		err = jpeg.Encode(thumbnailFile, thumbnail, nil)
+		thumbPath := path.Join(thumbDir, photoName)
+		err = PHOTO_BUCKET.PutReader(thumbPath,
+			&thumbnailBuffer,
+			int64(thumbnailBuffer.Len()),
+			"image/jpeg",
+			s3.PublicRead)
 		if err != nil {
 			c.FlashParams()
-			c.Flash.Error("Failed to save thumbnail:", err)
+			c.Flash.Error("Error saving file: %s", err)
 			return c.Redirect(Application.Upload)
 		}
 
 		// Save the photo
-		output, err := os.Create(path.Join(photoDir, photoName))
+		originalPath := path.Join(photoDir, photoName)
+		err = PHOTO_BUCKET.PutReader(originalPath,
+			bytes.NewReader(photoBytes),
+			int64(len(photoBytes)),
+			fmt.Sprintf("image/%s", format),
+			s3.PublicRead)
 		if err != nil {
 			c.FlashParams()
-			c.Flash.Error("Error creating file:", err)
-			return c.Redirect(Application.Upload)
-		}
-
-		_, err = io.Copy(output, bytes.NewReader(photoBytes))
-		output.Close()
-		if err != nil {
-			c.FlashParams()
-			c.Flash.Error("Error writing photo:", err)
+			c.Flash.Error("Error writing photo: %s", err)
 			return c.Redirect(Application.Upload)
 		}
 
@@ -270,6 +271,8 @@ func (c Application) PostUpload(name string) rev.Result {
 			Height:   rect.Max.Y - rect.Min.Y,
 			Uploaded: time.Now(),
 			Taken:    taken,
+			PhotoUrl: PHOTO_BUCKET.URL(originalPath),
+			ThumbUrl: PHOTO_BUCKET.URL(thumbPath),
 		}
 
 		c.Txn.Insert(&photo)
@@ -291,19 +294,22 @@ func (c Application) PostDownload(paths []string) rev.Result {
 	defer wr.Close()
 
 	for _, photoPath := range paths {
-		file, err := os.Open(path.Join(PHOTO_DIRECTORY, photoPath))
+		url := PHOTO_BUCKET.URL(path.Join("original", photoPath))
+		resp, err := http.Get(url)
 		if err != nil {
-			rev.ERROR.Println("Failed to create photo in zip:", err)
+			rev.ERROR.Println("Failed to get photo from S3:", err)
 			continue
 		}
 
 		photoWr, err := wr.Create(photoPath)
 		if err != nil {
 			rev.ERROR.Println("Failed to create photo in zip:", err)
+			resp.Body.Close()
 			continue
 		}
 
-		_, err = io.Copy(photoWr, file)
+		_, err = io.Copy(photoWr, resp.Body)
+		resp.Body.Close()
 		if err != nil {
 			rev.ERROR.Println("Error writing photo:", err)
 			return nil
@@ -311,16 +317,6 @@ func (c Application) PostDownload(paths []string) rev.Result {
 	}
 
 	return nil
-}
-
-type PhotoServerPlugin struct {
-	rev.EmptyPlugin
-}
-
-func (t PhotoServerPlugin) OnRoutesLoaded(router *rev.Router) {
-	router.Routes = append([]*rev.Route{
-		rev.NewRoute("GET", "/photos/", "staticDir:"+PHOTO_DIRECTORY),
-	}, router.Routes...)
 }
 
 type Pagination struct {
@@ -362,15 +358,4 @@ type Page struct {
 	Active   bool
 	Disabled bool
 	Url      template.HTML
-}
-
-func init() {
-	rev.InitHooks = append(rev.InitHooks, func() {
-		var ok bool
-		PHOTO_DIRECTORY, ok = rev.Config.String("datadir")
-		if !ok {
-			rev.ERROR.Fatalln("Must define datadir in app.conf")
-		}
-	})
-	rev.RegisterPlugin(PhotoServerPlugin{})
 }
