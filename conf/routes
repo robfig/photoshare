@@ -3,6 +3,8 @@
 # ~~~~
 
 GET     /                                       Application.View
+GET     /download                               Application.Download
+GET     /upload                                 Application.Upload
 GET     /view/{username}/{filename}             Application.ViewPhoto
 
 # Ignore favicon requests

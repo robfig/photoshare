@@ -15,17 +15,14 @@
     {{end}}
   </head>
   <body>
-    <header class="hero-unit">
-      <div class="container">
-        <div class="row" style="margin-left:-50px;">
-          <div class="hero-text">
-            <h1>Wharton India Trek 2012</h1>
-						<ol>
-						<li><a href="/Application/View">View photos</a></li>
-						<li><a href="/Application/Upload">Upload photos</a></li>
-						<li><a href="/Application/Download">Download photos</a></li>
-						</ol>
-          </div>
-        </div>
-      </div>
-    </header>
+		<div class="navbar">
+			<div class="navbar-inner">
+				<a class="brand" href="/">PhotoBoard.us</a>
+				<ul class="nav">
+					<li{{if eq .Controller.Action "Application.View"}} class="active"{{end}}><a href="/">View</a></li>
+					<li{{if eq .Controller.Action "Application.Download"}} class="active"{{end}}><a href="/download">Download</a></li>
+					<li{{if eq .Controller.Action "Application.Upload"}} class="active"{{end}}><a href="/upload">Upload</a></li>
+				</ul>
+			</div>
+		</div>
+
