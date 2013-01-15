@@ -1,4 +1,4 @@
-{{template "header.html" .}}
+{{template "Events/header.html" .}}
 
 <div class="container">
 
@@ -6,7 +6,7 @@
 
 {{template "messages.html" .}}
 
-<form action="/Application/PostUpload" method="POST" enctype="multipart/form-data" class="form-inline">
+<form action="/events/{{.event.EventId}}/upload" method="POST" enctype="multipart/form-data" class="form-inline">
 	<fieldset>
 		<div class="field">
 			<label for="name">Your Name:</label>

@@ -6,7 +6,7 @@
   <div class="row">
 {{range $photo, $index := $photos}}
 	  <div class="span4 photo" path="{{.Username}}/{{.Name}}">
-			<a href="/view/{{.Username}}/{{.Name}}">
+			<a href="/events/{{.EventId}}/view/{{.Username}}/{{.Name}}">
 				<img src="{{.ThumbUrl}}">
 			</a>
 		</div>

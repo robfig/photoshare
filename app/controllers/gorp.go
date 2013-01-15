@@ -21,7 +21,8 @@ func (p GorpPlugin) OnAppStart() {
 	db.DbPlugin{}.OnAppStart()
 	dbm = &gorp.DbMap{Db: db.Db, Dialect: gorp.SqliteDialect{}}
 	dbm.TraceOn("[gorp]", rev.INFO)
-	t := dbm.AddTable(models.Photo{}).SetKeys(true, "PhotoId")
+	t := dbm.AddTable(models.Event{}).SetKeys(true, "EventId")
+	t = dbm.AddTable(models.Photo{}).SetKeys(true, "PhotoId")
 	t.ColMap("Taken").Transient = true
 	t.ColMap("Uploaded").Transient = true
 	dbm.CreateTables()

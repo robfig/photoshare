@@ -8,6 +8,7 @@ import (
 
 type Photo struct {
 	PhotoId  int    // Auto-incrementing key.
+	EventId  int    // Which event is it attached to?
 	Name     string // From the filename
 	Format   string // Returned by image.Decode
 	Username string // Name of the user that uploaded this.

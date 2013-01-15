@@ -7,4 +7,5 @@ func init() {
 	rev.InterceptMethod((*GorpController).Begin, rev.BEFORE)
 	rev.InterceptMethod((*GorpController).Commit, rev.AFTER)
 	rev.InterceptMethod((*GorpController).Rollback, rev.FINALLY)
+	rev.InterceptMethod((*Events).GetEvent, rev.BEFORE)
 }

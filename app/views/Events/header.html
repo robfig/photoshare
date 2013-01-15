@@ -1,0 +1,16 @@
+{{template "header.html" .}}
+
+<div class="navbar">
+	<div class="navbar-inner">
+		<a class="brand" href="#">{{.event.Name}}</a>
+		<ul class="nav">
+			<li{{if eq .Controller.Action "Events.View"}} class="active"{{end}}>
+				<a href="/events/{{.event.EventId}}/view">View</a></li>
+			<li{{if eq .Controller.Action "Events.Download"}} class="active"{{end}}>
+				<a href="/events/{{.event.EventId}}/download">Download</a></li>
+			<li{{if eq .Controller.Action "Events.Upload"}} class="active"{{end}}>
+				<a href="/events/{{.event.EventId}}/upload">Upload</a></li>
+		</ul>
+	</div>
+</div>
+

@@ -2,10 +2,15 @@
 # This file defines all application routes (Higher priority routes first)
 # ~~~~
 
-GET     /                                       Application.View
-GET     /download                               Application.Download
-GET     /upload                                 Application.Upload
-GET     /view/{username}/{filename}             Application.ViewPhoto
+GET     /                                                   Application.Welcome
+POST    /events                                             Application.CreateEvent
+# TODO: Test the following line
+GET     /events/{<\d+>event}/?                              Events.View
+GET     /events/{<\d+>event}/view                           Events.View
+GET     /events/{<\d+>event}/download                       Events.Download
+GET     /events/{<\d+>event}/upload                         Events.Upload
+POST    /events/{<\d+>event}/upload                         Events.PostUpload
+GET     /events/{<\d+>event}/view/{username}/{filename}     Events.ViewPhoto
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

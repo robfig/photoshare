@@ -1,5 +1,5 @@
 {{set . "title" "View photo"}}
-{{template "header.html" .}}
+{{template "Events/header.html" .}}
 
 <div class="container">
 	<div class="row">
@@ -7,7 +7,7 @@
 			<a href="">Left</a>
 		</span>
 		<span class="span10">
-			<img src="/photos/{{.photo.Username}}/{{.photo.Name}}">
+			<img src="{{.photo.PhotoUrl}}">
 
 			<table class="table table-striped">
 				<tr><td>Uploaded by</td><td>{{.photo.Username}}</td></tr>
