@@ -125,8 +125,41 @@ func (c Events) ViewPhoto(username, filename string) rev.Result {
 		return c.NotFound("No photo found.")
 	}
 
-	photo := photos[0]
-	return c.Render(photo)
+	photo := photos[0].(*models.Photo)
+
+	// Get the following photo
+	photos, err = c.Txn.Select(models.Photo{}, `
+select * from Photo
+ where EventId = ? and (TakenStr > ? or Username > ?)
+ order by Username, TakenStr
+ limit 1`,
+		c.Event.EventId, photo.TakenStr, username)
+	if err != nil {
+		return c.RenderError(err)
+	}
+
+	var next *models.Photo
+	if len(photos) != 0 {
+		next = photos[0].(*models.Photo)
+	}
+
+	// Get the previous photo
+	photos, err = c.Txn.Select(models.Photo{}, `
+select * from Photo
+ where EventId = ? and (TakenStr < ? or Username < ?)
+ order by Username desc, TakenStr desc
+ limit 1`,
+		c.Event.EventId, photo.TakenStr, username)
+	if err != nil {
+		return c.RenderError(err)
+	}
+
+	var prev *models.Photo
+	if len(photos) != 0 {
+		prev = photos[0].(*models.Photo)
+	}
+
+	return c.Render(photo, next, prev)
 }
 
 type Gallery struct {

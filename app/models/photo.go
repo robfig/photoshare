@@ -45,3 +45,7 @@ func (p *Photo) PostGet(_ gorp.SqlExecutor) error {
 	}
 	return nil
 }
+
+func (p *Photo) ViewUrl() string {
+	return fmt.Sprintf("/events/%d/view/%s/%s", p.EventId, p.Username, p.Name)
+}

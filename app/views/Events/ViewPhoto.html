@@ -1,22 +1,33 @@
 {{set . "title" "View photo"}}
 {{template "Events/header.html" .}}
 
+<style>
+.pagination {
+	font-size: 50px;
+}
+</style>
+
 <div class="container">
 	<div class="row">
-		<span class="span1">
-			<a href="">Left</a>
+		<span class="pull-left pagination">
+			{{if .prev}}<a href="{{.prev.ViewUrl}}">&laquo; previous</a>
+			{{else}}&laquo; previous
+			{{end}}
 		</span>
-		<span class="span10">
+		<span class="pull-right pagination">
+			{{if .next}}<a href="{{.next.ViewUrl}}">next &raquo;</a>
+			{{else}}next &raquo;
+			{{end}}
+		</span>
+	</div>
+	<div class="row">
+		<span class="span12">
 			<img src="{{.photo.PhotoUrl}}">
-
 			<table class="table table-striped">
 				<tr><td>Uploaded by</td><td>{{.photo.Username}}</td></tr>
 				<tr><td>Taken</td><td>{{.photo.Taken}}</td></tr>
 				<tr><td>Dimensions</td><td>{{.photo.Width}}x{{.photo.Height}}</td></tr>
 			</table>
-		</span>
-		<span class="span1">
-			<a href="">Right</a>
 		</span>
 	</div>
 </div>
