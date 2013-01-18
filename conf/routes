@@ -11,6 +11,7 @@ GET     /events/{<\d+>event}/download                       Events.Download
 GET     /events/{<\d+>event}/upload                         Events.Upload
 POST    /events/{<\d+>event}/upload                         Events.PostUpload
 GET     /events/{<\d+>event}/view/{username}/{filename}     Events.ViewPhoto
+POST    /photos/{id}/delete                                 Photos.Delete
 
 # Ignore favicon requests
 GET     /favicon.ico                            404

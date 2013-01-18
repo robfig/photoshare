@@ -2,8 +2,21 @@
 {{template "Events/header.html" .}}
 
 <style>
-.photo img {
-	padding: 5px;
+.photo {
+  position: relative;
+}
+.delete-photo {
+  display:none;
+  position: absolute;
+  top: 0px;
+  right: 0px;
+  font-size: 24px;
+  padding: 3px 8px;
+	color: #c00;
+  cursor: pointer;
+}
+.photo:hover .delete-photo {
+  display:block;
 }
 </style>
 
@@ -14,6 +27,15 @@
 {{template "Events/gallery.html" .gallery}}
 
 </div>
+
+<script>
+$(".delete-photo").click(function(e) {
+	if (confirm("Are you sure you want to delete the photo?")) {
+		var photoId = $(this).parent().attr("photoId");
+		$('<form method="POST" action="/photos/'+photoId+'/delete"></form>').appendTo("body").submit();
+	}
+});
+</script>
 
 {{template "footer.html" .}}
 
