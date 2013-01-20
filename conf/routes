@@ -8,6 +8,7 @@ POST    /events                                             Application.CreateEv
 GET     /events/{<\d+>event}/?                              Events.View
 GET     /events/{<\d+>event}/view                           Events.View
 GET     /events/{<\d+>event}/download                       Events.Download
+POST    /events/{<\d+>event}/download                       Events.PostDownload
 GET     /events/{<\d+>event}/upload                         Events.Upload
 POST    /events/{<\d+>event}/upload                         Events.PostUpload
 GET     /events/{<\d+>event}/view/{username}/{filename}     Events.ViewPhoto
