@@ -1,21 +1,18 @@
+Make download work again
+Use large thumbnail for individual photo view
+Color / texture
+Switch to using large ids for events / photos
+Have a page showing the upload status, and don't block user on thumbnail creation.
+De-dupe photos
+
 Sort orders for gallery.
 Voting.
 Tagging.
-Stream reading the uploaded photos.
-Should be able to accept photos []*multipart.FileHeader
 Read EXIF data and allow reset by time zone?
 Show EXIF geolocation on a map.
-Have a page showing the upload status, and don't block user on thumbnail creation.
-Handle EXIF rotation when viewing original photo
-Handle uploading the same filename from the same user.
 Add caption that can be set by anyone. (or the uplaoder)
 
 Group by User.  Group by Day.
 Order by time taken, votes
 
 Use datetime type for time columns (instead of varchar)
-
-
-Open issue on goamz to specify whether Buckets may be shared, and to fix the
-import paths to be go gettable. (or figure out where the original import is)
-

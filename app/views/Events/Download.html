@@ -53,7 +53,7 @@ $(".photo").click(function(e) {
 $("form").submit(function(e) {
 	$(".photo.selected").each(function(p) {
 		$("form").append(
-			'<input type="hidden" name="paths[]" value="' + $(this).attr("path") + '"/>');
+			'<input type="hidden" name="photoIds[]" value="' + $(this).attr("photoId") + '"/>');
 	});
 	numSelected = 0;
 	$("#num-photos").text(numSelected);

@@ -3,23 +3,23 @@ package models
 import (
 	"fmt"
 	"github.com/coopernurse/gorp"
+	"math/rand"
 	"time"
 )
 
+const S3 = "http://s3.amazonaws.com/photoboard"
+
 type Photo struct {
-	PhotoId  int    // Auto-incrementing key.
-	EventId  int    // Which event is it attached to?
-	Name     string // From the filename
-	Format   string // Returned by image.Decode
+	PhotoId  int32  // Random integer key.
+	EventId  int32  // Which event is it attached to?
+	Filename string // The base filename on the uploader's computer.
+	Format   string // Image format returned by image.Decode
 	Username string // Name of the user that uploaded this.
 
-	Width, Height int // Pixels
+	Width, Height int32 // Pixels
 
 	Taken    time.Time // Initially set from EXIF data, but may be subsequently updated.
 	Uploaded time.Time // Time of the upload (on record creation).
-
-	PhotoUrl string // Amazon S3 URLs to the photo and thumbnails.
-	ThumbUrl string
 
 	TakenStr, UploadedStr string // Temporary fields used to store time.Time as a string.
 }
@@ -30,6 +30,7 @@ const (
 )
 
 func (p *Photo) PreInsert(_ gorp.SqlExecutor) error {
+	p.PhotoId = rand.Int31()
 	p.TakenStr = p.Uploaded.Format(SQL_DATETIME_FORMAT)
 	p.UploadedStr = p.Taken.Format(SQL_DATETIME_FORMAT)
 	return nil
@@ -46,6 +47,14 @@ func (p *Photo) PostGet(_ gorp.SqlExecutor) error {
 	return nil
 }
 
-func (p *Photo) ViewUrl() string {
-	return fmt.Sprintf("/events/%d/view/%s/%s", p.EventId, p.Username, p.Name)
+func (p Photo) S3Path() string {
+	return fmt.Sprintf("%d", p.PhotoId)
+}
+
+func (p Photo) S3Url() string {
+	return fmt.Sprintf("%s/%s", S3, p.S3Path())
+}
+
+func (p Photo) ViewUrl() string {
+	return fmt.Sprintf("/photos/%d", p.PhotoId)
 }

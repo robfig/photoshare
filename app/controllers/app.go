@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/robfig/photoshare/app/models"
 	"github.com/robfig/revel"
-	"math/rand"
 )
 
 type Application struct {
@@ -25,9 +24,8 @@ func (c Application) CreateEvent(email, event string) rev.Result {
 	}
 
 	e := models.Event{
-		EventId: rand.Int(),
-		Name:    event,
-		Admin:   email,
+		Name:  event,
+		Admin: email,
 	}
 
 	err := c.Txn.Insert(&e)

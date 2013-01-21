@@ -3,7 +3,6 @@ package controllers
 import (
 	"archive/zip"
 	"bytes"
-	"code.google.com/p/graphics-go/graphics"
 	"fmt"
 	"github.com/robfig/goamz/aws"
 	"github.com/robfig/goamz/s3"
@@ -13,9 +12,7 @@ import (
 	"github.com/rwcarlsen/goexif/exif"
 	"html/template"
 	"image"
-	_ "image/gif"
-	"image/jpeg"
-	_ "image/png"
+	_ "image/jpeg"
 	"io"
 	"io/ioutil"
 	"math"
@@ -34,7 +31,7 @@ func init() {
 		rev.ERROR.Fatalln(`AWS Authorization Required.
 Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.`)
 	}
-	PHOTO_BUCKET = s3.New(auth, aws.USEast).Bucket("whartonphotos")
+	PHOTO_BUCKET = s3.New(auth, aws.USEast).Bucket("photoboard")
 }
 
 type Events struct {
@@ -113,62 +110,11 @@ func (c Events) gallery(template string, page int) rev.Result {
 	return c.RenderTemplate(template)
 }
 
-func (c Events) ViewPhoto(username, filename string) rev.Result {
-	photos, err := c.Txn.Select(models.Photo{},
-		"select * from Photo where EventId = ? and Username = ? and Name = ?",
-		c.Event.EventId, username, filename)
-	if err != nil {
-		return c.RenderError(err)
-	}
-
-	if len(photos) == 0 {
-		return c.NotFound("No photo found.")
-	}
-
-	photo := photos[0].(*models.Photo)
-
-	// Get the following photo
-	photos, err = c.Txn.Select(models.Photo{}, `
-select * from Photo
- where EventId = ? and (TakenStr > ? or Username > ?)
- order by Username, TakenStr
- limit 1`,
-		c.Event.EventId, photo.TakenStr, username)
-	if err != nil {
-		return c.RenderError(err)
-	}
-
-	var next *models.Photo
-	if len(photos) != 0 {
-		next = photos[0].(*models.Photo)
-	}
-
-	// Get the previous photo
-	photos, err = c.Txn.Select(models.Photo{}, `
-select * from Photo
- where EventId = ? and (TakenStr < ? or Username < ?)
- order by Username desc, TakenStr desc
- limit 1`,
-		c.Event.EventId, photo.TakenStr, username)
-	if err != nil {
-		return c.RenderError(err)
-	}
-
-	var prev *models.Photo
-	if len(photos) != 0 {
-		prev = photos[0].(*models.Photo)
-	}
-
-	return c.Render(photo, next, prev)
-}
-
 type Gallery struct {
 	Photos map[string][]*models.Photo
 	Total  int
 }
 
-// Return an array of user names to photo paths.
-// TODO: How to get the map to be ordered.
 func (c Events) getGallery(start, num int) (*Gallery, error) {
 	photos, err := c.Txn.Select(models.Photo{},
 		"select * from Photo where EventId = ? order by Username, TakenStr limit ?, ?",
@@ -214,9 +160,6 @@ func (c Events) PostUpload(name string) rev.Result {
 		return c.Redirect(Events.Upload)
 	}
 
-	eventIdStr := fmt.Sprintf("%d", c.Event.EventId)
-	photoDir := path.Join(eventIdStr, "original", name)
-	thumbDir := path.Join(eventIdStr, "250x250", name)
 	photos := c.Params.Files["photos[]"]
 	for _, photoFileHeader := range photos {
 		// Open the photo.
@@ -228,11 +171,11 @@ func (c Events) PostUpload(name string) rev.Result {
 		}
 
 		photoBytes, err := ioutil.ReadAll(input)
+		input.Close()
 		if err != nil || len(photoBytes) == 0 {
 			rev.ERROR.Println("Failed to read image:", err)
 			continue
 		}
-		input.Close()
 
 		// Decode the photo.
 		photoImage, format, err := image.Decode(bytes.NewReader(photoBytes))
@@ -248,67 +191,7 @@ func (c Events) PostUpload(name string) rev.Result {
 			continue
 		}
 
-		var orientation int = 1
-		if orientationTag, err := x.Get(exif.Orientation); err == nil {
-			orientation = int(orientationTag.Int(0))
-		}
-
-		photoName := path.Base(photoFileHeader.Filename)
-
-		// Create a thumbnail
-		thumbnail := image.NewRGBA(image.Rect(0, 0, 250, 250))
-		err = graphics.Thumbnail(thumbnail, photoImage)
-		if err != nil {
-			rev.ERROR.Println("Failed to create thumbnail:", err)
-			continue
-		}
-
-		// If the EXIF said to, rotate the thumbnail.
-		if orientation != 1 {
-			if angleRadians, ok := ORIENTATION_ANGLES[orientation]; ok {
-				rotatedThumbnail := image.NewRGBA(image.Rect(0, 0, 250, 250))
-				err = graphics.Rotate(rotatedThumbnail, thumbnail, &graphics.RotateOptions{Angle: angleRadians})
-				if err != nil {
-					rev.ERROR.Println("Failed to rotate:", err)
-				} else {
-					thumbnail = rotatedThumbnail
-				}
-			}
-		}
-
-		var thumbnailBuffer bytes.Buffer
-		err = jpeg.Encode(&thumbnailBuffer, thumbnail, nil)
-		if err != nil {
-			c.FlashParams()
-			c.Flash.Error("Failed to encode thumbnail:", err)
-			return c.Redirect(Events.Upload)
-		}
-
-		thumbPath := path.Join(thumbDir, photoName)
-		err = PHOTO_BUCKET.PutReader(thumbPath,
-			&thumbnailBuffer,
-			int64(thumbnailBuffer.Len()),
-			"image/jpeg",
-			s3.PublicRead)
-		if err != nil {
-			c.FlashParams()
-			c.Flash.Error("Error saving file: %s", err)
-			return c.Redirect(Events.Upload)
-		}
-
-		// Save the photo
-		originalPath := path.Join(photoDir, photoName)
-		err = PHOTO_BUCKET.PutReader(originalPath,
-			bytes.NewReader(photoBytes),
-			int64(len(photoBytes)),
-			fmt.Sprintf("image/%s", format),
-			s3.PublicRead)
-		if err != nil {
-			c.FlashParams()
-			c.Flash.Error("Error writing photo: %s", err)
-			return c.Redirect(Events.Upload)
-		}
-
+		// Look for the taken time in the EXIF.
 		var taken time.Time
 		if takenTag, err := x.Get("DateTimeOriginal"); err == nil {
 			taken, err = time.Parse("2006:01:02 15:04:05", takenTag.StringVal())
@@ -323,24 +206,36 @@ func (c Events) PostUpload(name string) rev.Result {
 			EventId:  c.Event.EventId,
 			Username: name,
 			Format:   format,
-			Name:     photoName,
-			Width:    rect.Max.X - rect.Min.X,
-			Height:   rect.Max.Y - rect.Min.Y,
+			Filename: path.Base(photoFileHeader.Filename),
+			Width:    int32(rect.Max.X - rect.Min.X),
+			Height:   int32(rect.Max.Y - rect.Min.Y),
 			Uploaded: time.Now(),
 			Taken:    taken,
-			PhotoUrl: PHOTO_BUCKET.URL(originalPath),
-			ThumbUrl: PHOTO_BUCKET.URL(thumbPath),
+		}
+		c.Txn.Insert(&photo)
+
+		// Save the photo to S3.
+		err = PHOTO_BUCKET.PutReader(photo.S3Path(),
+			bytes.NewReader(photoBytes),
+			int64(len(photoBytes)),
+			fmt.Sprintf("image/%s", format),
+			s3.PublicRead)
+		if err != nil {
+			c.FlashParams()
+			c.Flash.Error("Error writing photo: %s", err)
+			return c.Redirect(Events.Upload)
 		}
 
-		c.Txn.Insert(&photo)
+		go SaveThumbnail(photo.PhotoId, photoImage, x, 250, 250)
+		go SaveThumbnail(photo.PhotoId, photoImage, x, 940, 705)
 	}
 
 	c.Flash.Success("%d photos uploaded.", len(photos))
 	return c.Redirect("/events/%d/view", c.Event.EventId)
 }
 
-func (c Events) PostDownload(paths []string) rev.Result {
-	if len(paths) == 0 {
+func (c Events) PostDownload(photoIds []int) rev.Result {
+	if len(photoIds) == 0 {
 		return c.RenderError(fmt.Errorf("Nothing to download"))
 	}
 
@@ -350,15 +245,15 @@ func (c Events) PostDownload(paths []string) rev.Result {
 	wr := zip.NewWriter(c.Response.Out)
 	defer wr.Close()
 
-	for _, photoPath := range paths {
-		url := PHOTO_BUCKET.URL(path.Join("original", photoPath))
+	for _, photoId := range photoIds {
+		url := PHOTO_BUCKET.URL(models.Photo{PhotoId: int32(photoId)}.S3Path())
 		resp, err := http.Get(url)
 		if err != nil {
 			rev.ERROR.Println("Failed to get photo from S3:", err)
 			continue
 		}
 
-		photoWr, err := wr.Create(photoPath)
+		photoWr, err := wr.Create(fmt.Sprintf("%d.jpg", photoId))
 		if err != nil {
 			rev.ERROR.Println("Failed to create photo in zip:", err)
 			resp.Body.Close()

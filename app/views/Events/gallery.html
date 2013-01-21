@@ -4,11 +4,11 @@
   </div>
 
   <div class="row">
-{{range $photo, $index := $photos}}
-	  <div class="span4 photo" path="{{.Username}}/{{.Name}}" photoId="{{.PhotoId}}">
+{{range $index, $photo := $photos}}
+	  <div class="span3 photo" photoId="{{.PhotoId}}">
 			<div class="delete-photo">&#x2718;</div>
-			<a href="/events/{{.EventId}}/view/{{.Username}}/{{.Name}}">
-				<img src="{{.ThumbUrl}}">
+			<a href="{{.ViewUrl}}">
+				<img src="{{thumbUrl $photo 250 250}}">
 			</a>
 		</div>
 {{end}}
