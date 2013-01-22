@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"bytes"
-	"code.google.com/p/graphics-go/graphics"
+	"github.com/disintegration/imaging"
 	"github.com/robfig/goamz/s3"
 	"github.com/robfig/photoshare/app/models"
 	"github.com/robfig/revel"
@@ -11,35 +11,34 @@ import (
 	"image/jpeg"
 )
 
+var REORIENTATION_FUNCS = map[int]func(image.Image) *image.NRGBA{
+	1: nil,
+	3: imaging.Rotate180,
+	6: imaging.Rotate270,
+	8: imaging.Rotate90,
+}
+
 // Generate a thumbnail from the given image, save it to S3, and save the record to the DB.
-func SaveThumbnail(photoId int32, photoImage image.Image, ex *exif.Exif, width, height int32) {
-	thumbnail := image.NewRGBA(image.Rect(0, 0, int(width), int(height)))
-	err := graphics.Thumbnail(thumbnail, photoImage)
-	if err != nil {
-		rev.ERROR.Println("Failed to create thumbnail:", err)
-		return
-	}
+func SaveThumbnail(
+	proc func(image.Image, int, int, imaging.ResampleFilter) *image.NRGBA,
+	photoId int32,
+	photoImage image.Image,
+	ex *exif.Exif,
+	width, height int32) {
+
+	thumbnail := proc(photoImage, int(width), int(height), imaging.Lanczos)
 
 	// If the EXIF says to, rotate the thumbnail.
 	var orientation int = 1
 	if orientationTag, err := ex.Get(exif.Orientation); err == nil {
 		orientation = int(orientationTag.Int(0))
 	}
-
-	if orientation != 1 {
-		if angleRadians, ok := ORIENTATION_ANGLES[orientation]; ok {
-			rotatedThumbnail := image.NewRGBA(image.Rect(0, 0, 250, 250))
-			err = graphics.Rotate(rotatedThumbnail, thumbnail, &graphics.RotateOptions{Angle: angleRadians})
-			if err != nil {
-				rev.ERROR.Println("Failed to rotate:", err)
-			} else {
-				thumbnail = rotatedThumbnail
-			}
-		}
+	if rotateFunc, ok := REORIENTATION_FUNCS[orientation]; ok && rotateFunc != nil {
+		thumbnail = rotateFunc(thumbnail)
 	}
 
 	var thumbnailBuffer bytes.Buffer
-	err = jpeg.Encode(&thumbnailBuffer, thumbnail, nil)
+	err := jpeg.Encode(&thumbnailBuffer, thumbnail, nil)
 	if err != nil {
 		rev.ERROR.Println("Failed to create thumbnail:", err)
 		return

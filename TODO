@@ -1,7 +1,5 @@
-Make download work again
-Use large thumbnail for individual photo view
+If upload times out, ensure that the transaction still closes.
 Color / texture
-Switch to using large ids for events / photos
 Have a page showing the upload status, and don't block user on thumbnail creation.
 De-dupe photos
 

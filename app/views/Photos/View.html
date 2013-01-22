@@ -3,31 +3,29 @@
 
 <style>
 .pagination {
-	font-size: 50px;
+	font-size: 100px;
 }
 </style>
 
 <div class="container">
 	<div class="row">
-		<span class="pull-left pagination">
-			{{if .prev}}<a href="{{.prev.ViewUrl}}">&laquo; previous</a>
-			{{else}}&laquo; previous
+		<span class="span2 pagination">
+			{{if .prev}}<a href="{{.prev.ViewUrl}}">&laquo;</a>
+			{{else}}&laquo;
 			{{end}}
 		</span>
-		<span class="pull-right pagination">
-			{{if .next}}<a href="{{.next.ViewUrl}}">next &raquo;</a>
-			{{else}}next &raquo;
-			{{end}}
-		</span>
-	</div>
-	<div class="row">
-		<span class="span12">
-			<img src="{{thumbUrl .photo 940 705}}">
+		<span class="span8" style="text-align:center;">
+			<img src="{{thumbUrl .photo 740 555}}" style="margin-bottom:10px;">
 			<table class="table table-striped">
 				<tr><td>Uploaded by</td><td>{{.photo.Username}}</td></tr>
 				<tr><td>Taken</td><td>{{.photo.Taken}}</td></tr>
 				<tr><td>Dimensions</td><td>{{.photo.Width}}x{{.photo.Height}}</td></tr>
 			</table>
+		</span>
+		<span class="span2 pagination">
+			{{if .next}}<a href="{{.next.ViewUrl}}">&raquo;</a>
+			{{else}}&raquo;
+			{{end}}
 		</span>
 	</div>
 </div>

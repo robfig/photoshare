@@ -25,6 +25,7 @@ func (p GorpPlugin) OnAppStart() {
 	t = dbm.AddTable(models.Photo{}).SetKeys(false, "PhotoId")
 	t.ColMap("Taken").Transient = true
 	t.ColMap("Uploaded").Transient = true
+	dbm.AddTable(models.Thumbnail{}).SetKeys(false, "PhotoId", "Width", "Height")
 	dbm.CreateTables()
 }
 

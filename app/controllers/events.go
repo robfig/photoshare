@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
+	"github.com/disintegration/imaging"
 	"github.com/robfig/goamz/aws"
 	"github.com/robfig/goamz/s3"
 	"github.com/robfig/photoshare/app/models"
@@ -15,7 +16,6 @@ import (
 	_ "image/jpeg"
 	"io"
 	"io/ioutil"
-	"math"
 	"net/http"
 	"path"
 	"reflect"
@@ -144,13 +144,6 @@ func (c Events) Upload() rev.Result {
 	return c.Render()
 }
 
-var ORIENTATION_ANGLES = map[int]float64{
-	1: 0.0,
-	3: math.Pi,
-	6: math.Pi * 3 / 2,
-	8: math.Pi / 2,
-}
-
 func (c Events) PostUpload(name string) rev.Result {
 	c.Validation.Required(name)
 
@@ -226,8 +219,8 @@ func (c Events) PostUpload(name string) rev.Result {
 			return c.Redirect(Events.Upload)
 		}
 
-		go SaveThumbnail(photo.PhotoId, photoImage, x, 250, 250)
-		go SaveThumbnail(photo.PhotoId, photoImage, x, 940, 705)
+		go SaveThumbnail(imaging.Thumbnail, photo.PhotoId, photoImage, x, 250, 250)
+		go SaveThumbnail(imaging.Fit, photo.PhotoId, photoImage, x, 740, 555)
 	}
 
 	c.Flash.Success("%d photos uploaded.", len(photos))
