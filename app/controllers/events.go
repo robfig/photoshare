@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"github.com/disintegration/imaging"
 	"github.com/robfig/goamz/aws"
 	"github.com/robfig/goamz/s3"
 	"github.com/robfig/photoshare/app/models"
@@ -145,6 +144,7 @@ func (c Events) Upload() rev.Result {
 }
 
 func (c Events) PostUpload(name string) rev.Result {
+	rev.TRACE.Println("PostUpload from", name)
 	c.Validation.Required(name)
 
 	if c.Validation.HasErrors() {
@@ -178,18 +178,20 @@ func (c Events) PostUpload(name string) rev.Result {
 		}
 
 		// Decode the EXIF data
+		// It may fail with EOF if the image doesn't have any.
 		x, err := exif.Decode(bytes.NewReader(photoBytes))
 		if err != nil {
 			rev.ERROR.Println("Failed to decode image exif:", err)
-			continue
 		}
 
 		// Look for the taken time in the EXIF.
 		var taken time.Time
-		if takenTag, err := x.Get("DateTimeOriginal"); err == nil {
-			taken, err = time.Parse("2006:01:02 15:04:05", takenTag.StringVal())
-			if err != nil {
-				rev.ERROR.Println("Failed to parse time:", takenTag.StringVal(), ":", err)
+		if x != nil {
+			if takenTag, err := x.Get("DateTimeOriginal"); err == nil {
+				taken, err = time.Parse("2006:01:02 15:04:05", takenTag.StringVal())
+				if err != nil {
+					rev.ERROR.Println("Failed to parse time:", takenTag.StringVal(), ":", err)
+				}
 			}
 		}
 
@@ -208,6 +210,7 @@ func (c Events) PostUpload(name string) rev.Result {
 		c.Txn.Insert(&photo)
 
 		// Save the photo to S3.
+		rev.INFO.Println("Saving photo", photo.S3Path())
 		err = PHOTO_BUCKET.PutReader(photo.S3Path(),
 			bytes.NewReader(photoBytes),
 			int64(len(photoBytes)),
@@ -219,8 +222,7 @@ func (c Events) PostUpload(name string) rev.Result {
 			return c.Redirect(Events.Upload)
 		}
 
-		go SaveThumbnail(imaging.Thumbnail, photo.PhotoId, photoImage, x, 250, 250)
-		go SaveThumbnail(imaging.Fit, photo.PhotoId, photoImage, x, 740, 555)
+		THUMBNAIL_GENERATOR <- ThumbnailRequest{photo.PhotoId, photoImage, x}
 	}
 
 	c.Flash.Success("%d photos uploaded.", len(photos))

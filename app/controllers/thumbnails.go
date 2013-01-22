@@ -30,11 +30,13 @@ func SaveThumbnail(
 
 	// If the EXIF says to, rotate the thumbnail.
 	var orientation int = 1
-	if orientationTag, err := ex.Get(exif.Orientation); err == nil {
-		orientation = int(orientationTag.Int(0))
-	}
-	if rotateFunc, ok := REORIENTATION_FUNCS[orientation]; ok && rotateFunc != nil {
-		thumbnail = rotateFunc(thumbnail)
+	if ex != nil {
+		if orientationTag, err := ex.Get(exif.Orientation); err == nil {
+			orientation = int(orientationTag.Int(0))
+		}
+		if rotateFunc, ok := REORIENTATION_FUNCS[orientation]; ok && rotateFunc != nil {
+			thumbnail = rotateFunc(thumbnail)
+		}
 	}
 
 	var thumbnailBuffer bytes.Buffer
@@ -58,5 +60,33 @@ func SaveThumbnail(
 	if err != nil {
 		rev.ERROR.Println("Failed to create thumbnail:", err)
 		return
+	}
+
+	dbm.Insert(thumbnailModel)
+}
+
+// To avoid getting swamped with thumbnail goroutines, limit the processing to a
+// single routine.
+
+type ThumbnailRequest struct {
+	PhotoId    int32
+	PhotoImage image.Image
+	Exif       *exif.Exif
+}
+
+var THUMBNAIL_GENERATOR chan ThumbnailRequest
+
+func init() {
+	THUMBNAIL_GENERATOR = make(chan ThumbnailRequest, 1000)
+	go RunThumbnailGenerator()
+}
+
+func RunThumbnailGenerator() {
+	for {
+		rev.INFO.Println("Thumbnailer: Waiting...")
+		req := <-THUMBNAIL_GENERATOR
+		rev.INFO.Println("Thumbnailer: Thumbnailing photo", req.PhotoId)
+		SaveThumbnail(imaging.Thumbnail, req.PhotoId, req.PhotoImage, req.Exif, 250, 250)
+		SaveThumbnail(imaging.Fit, req.PhotoId, req.PhotoImage, req.Exif, 740, 555)
 	}
 }
