@@ -1,6 +1,18 @@
 {{set . "title" "Welcome to PhotoBoard"}}
 {{template "header.html" .}}
 
+<style>
+body {
+	background: url(/public/images/background.jpg) no-repeat center;
+}
+
+.desc, .well {
+	background-color: rgba(255,255,255,0.8);
+	padding: 15px;
+	border-radius: 25px;
+}
+</style>
+
 <div class="container">
 <div class="row" style="height:100px"><div class="span12">&nbsp;</div></div>
 
@@ -35,11 +47,11 @@
 </div></div>
 
 <div class="row">
-	<div class="span3 lead">1. Create an Event</div>
-	<div class="span3 lead">2. Upload Photos</div>
-	<div class="span3 lead">3. Share Link w/ Friends</div>
-	<div class="span3 lead">4. Download their Photos</div>
+	<div class="span4"><div class=" lead desc">1. Create an Event</div></div>
+	<div class="span4"><div class=" lead desc">2. Upload Photos</div></div>
+	<div class="span4"><div class=" lead desc">3. Share Link with Friends</div></div>
 </div>
 
+</div>
 {{template "footer.html" .}}
 
